@@ -88,24 +88,6 @@
             </svg>
         );
 
-        const storage = {
-            async get(key) {
-                const value = localStorage.getItem(key);
-                if (value) {
-                    return { key, value };
-                }
-                throw new Error('Key not found');
-            },
-            async set(key, value) {
-                localStorage.setItem(key, value);
-                return { key, value };
-            },
-            async delete(key) {
-                localStorage.removeItem(key);
-                return { key, deleted: true };
-            }
-        };
-
         function MacroTracker() {
             const [foodDatabase, setFoodDatabase] = useState([]);
             const [allSessions, setAllSessions] = useState([]);
@@ -221,6 +203,51 @@
                 }
             };
 
+            const exportData = () => {
+                const data = {
+                    foodDatabase,
+                    sessions: allSessions
+                };
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `macro-tracker-backup-${new Date().toISOString().split('T')[0]}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+            };
+
+            const importData = () => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.json';
+                input.onchange = (e) => {
+                    const file = e.target.files[0];
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        try {
+                            const data = JSON.parse(event.target.result);
+                            if (data.foodDatabase) {
+                                setFoodDatabase(data.foodDatabase);
+                                saveDatabase(data.foodDatabase);
+                            }
+                            if (data.sessions) {
+                                setAllSessions(data.sessions);
+                                saveSessions(data.sessions);
+                                if (data.sessions.length > 0) {
+                                    setCurrentSessionId(data.sessions[0].id);
+                                }
+                            }
+                            alert('Data imported successfully!');
+                        } catch (error) {
+                            alert('Error importing data. Please check the file.');
+                        }
+                    };
+                    reader.readAsText(file);
+                };
+                input.click();
+            };
+
             const addFood = () => {
                 if (!newFood.name || !newFood.calories) return;
 
@@ -334,6 +361,24 @@
                         <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
                             <h1 className="text-3xl font-bold text-gray-800 mb-2">Macro Tracker</h1>
                             <p className="text-gray-600">{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                        </div>
+
+                        {/* Export/Import Section */}
+                        <div className="bg-white rounded-2xl shadow-lg p-4 mb-6">
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={exportData}
+                                    className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-semibold hover:bg-blue-700 transition-colors"
+                                >
+                                    📥 Export Data
+                                </button>
+                                <button
+                                    onClick={importData}
+                                    className="flex-1 bg-green-600 text-white py-3 rounded-xl font-semibold hover:bg-green-700 transition-colors"
+                                >
+                                    📤 Import Data
+                                </button>
+                            </div>
                         </div>
 
                         <div className="flex gap-2 mb-6">
